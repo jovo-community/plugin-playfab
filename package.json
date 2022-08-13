@@ -1,6 +1,6 @@
 {
   "name": "@jovo-community/plugin-playfab",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "A Jovo Framework plugin for PlayFab LiveOps game backend.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm5/index.js",

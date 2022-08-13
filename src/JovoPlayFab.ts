@@ -1,4 +1,4 @@
-import { Jovo, JovoError } from '@jovotech/framework';
+import { Jovo, JovoError, AnyObject } from '@jovotech/framework';
 import { PlayFabPluginConfig, ProfileInfo } from './PlayFabPlugin';
 import { PlayFab, PlayFabClient, PlayFabServer } from 'playfab-sdk';
 import { promisify } from 'util';
@@ -25,7 +25,6 @@ enum ApiStatus {
 }
 
 type StringObject = Record<string, string | null>;
-type AnyObject = Record<string, any>;
 type UserDataRecordObject = Record<string, UserDataRecord>;
 
 export class JovoPlayFab {
@@ -42,12 +41,15 @@ export class JovoPlayFab {
       });
     }
 
-    PlayFab.settings.developerSecretKey = this.config.developerSecretKey;
     return PlayFabServer;
   }
 
   init(): void {
     PlayFab.settings.titleId = this.config.titleId;
+
+    if (this.config.developerSecretKey) {
+      PlayFab.settings.developerSecretKey = this.config.developerSecretKey;
+    }
 
     if (!this.jovo.$session.data.playfab) {
       this.jovo.$session.data.playfab = {};
@@ -138,15 +140,16 @@ export class JovoPlayFab {
     }
   }
 
-  async updateProfile(profile: ProfileInfo): Promise<void> {
+  async updateProfile(profile: ProfileInfo): Promise<boolean> {
     console.debug('JovoPlayFab.updateProfile');
+    let result = false;
 
     const updateUserTitleDisplayName = promisify(PlayFabClient.UpdateUserTitleDisplayName);
     const updateAvatarUrl = promisify(PlayFabClient.UpdateAvatarUrl);
     const promises = [];
 
     if (!profile.displayName && !profile.avatarUrl) {
-      return;
+      return result;
     }
 
     if (profile.displayName) {
@@ -185,6 +188,7 @@ export class JovoPlayFab {
 
     if (successCount > 0) {
       this.jovo.$session.data.playfab.profile = profile;
+      result = true;
 
       if (profile.extendedProfile && this.config.login.extendedProfileKey) {
         const data = {
@@ -194,6 +198,8 @@ export class JovoPlayFab {
         await this.updateUserData(data);
       }
     }
+
+    return result;
   }
 
   async updateStat(statName: string, value: number): Promise<boolean> {
