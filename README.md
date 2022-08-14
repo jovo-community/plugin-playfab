@@ -596,10 +596,10 @@ new JovoDebugger({
 
 To get started with PlayFab in Jovo, check out the [jovo-game-starter](https://github.com/jovo-community/jovo-game-starter) project.
 
-## Video
+## Videos
 
 - [Configure a New Game Title in PlayFab Game Manager](https://youtu.be/pYnTjraEZAo) (4:46)
-
+- [Create a Game in 10 minutes with the Jovo Game Starter](https://youtu.be/RFs19J9t5ks) (11:54)
 
 # License
 
