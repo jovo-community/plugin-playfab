@@ -31,22 +31,10 @@ export class JovoPlayFab {
   constructor(readonly config: PlayFabPluginConfig, readonly jovo: Jovo) {}
 
   get PlayFabServer() {
-    if (!this.config.developerSecretKey) {
-      throw new JovoError({
-        message: `To use PlayFabServer, you must set developerSecretKey value in config.`,
-      });
-    }
-
     return PlayFabServer;
   }
 
   get PlayFabAdmin() {
-    if (!this.config.developerSecretKey) {
-      throw new JovoError({
-        message: `To use PlayFabAdmin, you must set developerSecretKey value in config.`,
-      });
-    }
-
     return PlayFabAdmin;
   }
 
@@ -55,6 +43,7 @@ export class JovoPlayFab {
   }
 
   init(): void {
+    PlayFab.settings.titleId = this.config.titleId;
     PlayFab.settings.developerSecretKey = this.config.developerSecretKey;
 
     if (!this.jovo.$session.data.playfab) {

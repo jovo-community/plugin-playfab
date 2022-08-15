@@ -88,6 +88,7 @@ export interface ProfileInfo {
 }
 
 export interface PlayFabPluginConfig extends PluginConfig {
+  titleId: string;
   developerSecretKey: string;
   login: {
     autoLogin: boolean;
@@ -112,6 +113,18 @@ export class PlayFabPlugin extends Plugin<PlayFabPluginConfig> {
 
     parent.middlewareCollection.use('dialogue.start', async (jovo) => {
       jovo.$playfab = new JovoPlayFab(this.config, jovo);
+
+      if (!this.config.titleId) {
+        throw new JovoError({
+          message: `Can not connect to PlayFab. Title-ID is missing.`,
+        });
+      }
+
+      if (!this.config.developerSecretKey) {
+        throw new JovoError({
+          message: `Can not connect to PlayFab. Developer-SECRET-KEY is missing.`,
+        });
+      }
 
       if (!jovo.$user.id) {
         throw new JovoError({
@@ -158,6 +171,7 @@ export class PlayFabPlugin extends Plugin<PlayFabPluginConfig> {
 
   getDefaultConfig(): PlayFabPluginConfig {
     return {
+      titleId: '',
       developerSecretKey: '',
       login: {
         autoLogin: true,

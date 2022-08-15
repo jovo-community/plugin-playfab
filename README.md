@@ -61,6 +61,7 @@ The plugin has the following values:
 
 ```typescript
 new PlayFabPlugin({
+  titleId: '',
   developerSecretKey: '',
   login: {
     autoLogin: true,
@@ -111,6 +112,7 @@ Here is a typical configuration:
 
 ```typescript
 {
+  titleId: 'A999',
   developerSecretKey: 'XYZ...',
   login : {
     extendedProfileKey: 'extendedProfile',
@@ -139,7 +141,7 @@ Here is a typical configuration:
   }
 }
 ```
-
+- `titleId`: Required. The PlayFab game title id.
 - `developerSecretKey`: Required. Developer secret key needed to make PlayFab Server and Admin API calls. For more information, see [Secret key management](https://docs.microsoft.com/en-us/gaming/playfab/gamemanager/secret-key-management) in the PlayFab documentation.
 - `login`: Configuration values for login. See [login](#login) for more information.
 - `leaderboard`: Configuration values for the leaderboard. See [leaderboard](#leaderboard) for more information.
