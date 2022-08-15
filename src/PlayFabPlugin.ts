@@ -88,7 +88,7 @@ export interface ProfileInfo {
 }
 
 export interface PlayFabPluginConfig extends PluginConfig {
-  titleId: string;
+  developerSecretKey: string;
   login: {
     autoLogin: boolean;
     infoRequestParameters: GetPlayerCombinedInfoRequestParams;
@@ -102,7 +102,6 @@ export interface PlayFabPluginConfig extends PluginConfig {
     profileConstraints: PlayerProfileViewConstraints;
     userDataKeys: string[];
   };
-  developerSecretKey?: string;
 }
 
 export class PlayFabPlugin extends Plugin<PlayFabPluginConfig> {
@@ -113,12 +112,6 @@ export class PlayFabPlugin extends Plugin<PlayFabPluginConfig> {
 
     parent.middlewareCollection.use('dialogue.start', async (jovo) => {
       jovo.$playfab = new JovoPlayFab(this.config, jovo);
-
-      if (!this.config.titleId) {
-        throw new JovoError({
-          message: `Can not send request to PlayFab. Title-ID is missing.`,
-        });
-      }
 
       if (!jovo.$user.id) {
         throw new JovoError({
@@ -165,7 +158,7 @@ export class PlayFabPlugin extends Plugin<PlayFabPluginConfig> {
 
   getDefaultConfig(): PlayFabPluginConfig {
     return {
-      titleId: '',
+      developerSecretKey: '',
       login: {
         autoLogin: true,
         extendedProfileKey: '',

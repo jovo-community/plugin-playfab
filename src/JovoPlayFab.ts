@@ -1,6 +1,6 @@
 import { Jovo, JovoError, AnyObject } from '@jovotech/framework';
 import { PlayFabPluginConfig, ProfileInfo } from './PlayFabPlugin';
-import { PlayFab, PlayFabClient, PlayFabServer } from 'playfab-sdk';
+import { PlayFab, PlayFabAdmin, PlayFabServer } from 'playfab-sdk';
 import { promisify } from 'util';
 
 export enum LoginStatus {
@@ -30,10 +30,6 @@ type UserDataRecordObject = Record<string, UserDataRecord>;
 export class JovoPlayFab {
   constructor(readonly config: PlayFabPluginConfig, readonly jovo: Jovo) {}
 
-  get PlayFabClient() {
-    return PlayFabClient;
-  }
-
   get PlayFabServer() {
     if (!this.config.developerSecretKey) {
       throw new JovoError({
@@ -44,12 +40,22 @@ export class JovoPlayFab {
     return PlayFabServer;
   }
 
-  init(): void {
-    PlayFab.settings.titleId = this.config.titleId;
-
-    if (this.config.developerSecretKey) {
-      PlayFab.settings.developerSecretKey = this.config.developerSecretKey;
+  get PlayFabAdmin() {
+    if (!this.config.developerSecretKey) {
+      throw new JovoError({
+        message: `To use PlayFabAdmin, you must set developerSecretKey value in config.`,
+      });
     }
+
+    return PlayFabAdmin;
+  }
+
+  get PlayFabId(): string {
+    return this.jovo.$session.data?.playfab?.loginInfo?.PlayFabId ?? '';
+  }
+
+  init(): void {
+    PlayFab.settings.developerSecretKey = this.config.developerSecretKey;
 
     if (!this.jovo.$session.data.playfab) {
       this.jovo.$session.data.playfab = {};
@@ -62,23 +68,21 @@ export class JovoPlayFab {
 
   async login(): Promise<void> {
     console.debug('JovoPlayFab.login');
-    if (!this.jovo.$session.data.playfab.sessionTicket) {
+    if (!this.jovo.$session.data?.playfab?.loginInfo?.SessionTicket) {
       const loginRequest: any = {
-        TitleId: this.config.titleId,
-        CustomId: this.jovo.$user.id,
+        ServerCustomId: this.jovo.$user.id,
         CreateAccount: true,
         CustomTags: { sessionId: this.jovo.$request.getSessionId() },
         InfoRequestParameters: this.config.login.infoRequestParameters,
       };
 
-      const loginWithCustomID = promisify(PlayFabClient.LoginWithCustomID);
+      const loginWithCustomID = promisify(PlayFabServer.LoginWithServerCustomId);
 
       try {
         const result = await loginWithCustomID(loginRequest);
 
         if (result.status === ApiStatus.OK) {
           this.jovo.$session.data.playfab.loginInfo = result.data;
-          this.jovo.$session.data.playfab.sessionTicket = result.data.SessionTicket;
 
           if (result.data.NewlyCreated) {
             // new player
@@ -134,7 +138,7 @@ export class JovoPlayFab {
           }
         }
       } catch (error) {
-        console.error('PlayFabClient.LoginWithCustomID', error);
+        console.error('PlayFabServer.LoginWithCustomID', error);
         this.jovo.$session.data.playfab.loginStatus = LoginStatus.Error;
       }
     }
@@ -144,8 +148,8 @@ export class JovoPlayFab {
     console.debug('JovoPlayFab.updateProfile');
     let result = false;
 
-    const updateUserTitleDisplayName = promisify(PlayFabClient.UpdateUserTitleDisplayName);
-    const updateAvatarUrl = promisify(PlayFabClient.UpdateAvatarUrl);
+    const updateUserTitleDisplayName = promisify(PlayFabAdmin.UpdateUserTitleDisplayName);
+    const updateAvatarUrl = promisify(PlayFabServer.UpdateAvatarUrl);
     const promises = [];
 
     if (!profile.displayName && !profile.avatarUrl) {
@@ -154,6 +158,7 @@ export class JovoPlayFab {
 
     if (profile.displayName) {
       const updateUserTitleDisplayNamePromise = updateUserTitleDisplayName({
+        PlayFabId: this.PlayFabId,
         DisplayName: profile.displayName,
       });
       promises.push(updateUserTitleDisplayNamePromise);
@@ -161,6 +166,7 @@ export class JovoPlayFab {
 
     if (profile.avatarUrl) {
       const updateAvatarUrlPromise = updateAvatarUrl({
+        PlayFabId: this.PlayFabId,
         ImageUrl: profile.avatarUrl,
       });
       promises.push(updateAvatarUrlPromise);
@@ -206,6 +212,7 @@ export class JovoPlayFab {
     console.debug('JovoPlayFab.updateStat');
 
     const updatePlayerStatisticsRequest = {
+      PlayFabId: this.PlayFabId,
       Statistics: [
         {
           StatisticName: statName,
@@ -214,15 +221,15 @@ export class JovoPlayFab {
         },
       ],
     };
-    const updatePlayerStatistics = promisify(PlayFabClient.UpdatePlayerStatistics);
+    const updatePlayerStatistics = promisify(PlayFabServer.UpdatePlayerStatistics);
 
     try {
       const result = await updatePlayerStatistics(updatePlayerStatisticsRequest);
-      console.debug('PlayFabClient.UpdatePlayerStatistics', JSON.stringify(result, null, 2));
+      console.debug('PlayFabServer.UpdatePlayerStatistics', JSON.stringify(result, null, 2));
 
       return true;
     } catch (error) {
-      console.error('PlayFabClient.UpdatePlayerStatistics', error);
+      console.error('PlayFabServer.UpdatePlayerStatistics', error);
     }
 
     return false;
@@ -232,13 +239,14 @@ export class JovoPlayFab {
     let value: number | null = null;
 
     const getPlayerStatisticsRequest = {
+      PlayFabId: this.PlayFabId,
       StatisticNames: [statName],
     };
-    const getPlayerStatistics = promisify(PlayFabClient.GetPlayerStatistics);
+    const getPlayerStatistics = promisify(PlayFabServer.GetPlayerStatistics);
 
     try {
       const result = await getPlayerStatistics(getPlayerStatisticsRequest);
-      console.debug('PlayFabClient.GetPlayerStatistics', JSON.stringify(result, null, 2));
+      console.debug('PlayFabServer.GetPlayerStatistics', JSON.stringify(result, null, 2));
 
       if (
         result.status === ApiStatus.OK &&
@@ -248,7 +256,7 @@ export class JovoPlayFab {
         value = result.data.Statistics[0].Value;
       }
     } catch (error) {
-      console.error('PlayFabClient.GetPlayerStatistics', error);
+      console.error('PlayFabServer.GetPlayerStatistics', error);
     }
 
     return value;
@@ -260,7 +268,7 @@ export class JovoPlayFab {
     const promises = [];
 
     if (this.config.leaderboard.topMax > 0) {
-      const getLeaderboard = promisify(PlayFabClient.GetLeaderboard);
+      const getLeaderboard = promisify(PlayFabServer.GetLeaderboard);
       promises.push(
         getLeaderboard({
           MaxResultsCount: this.config.leaderboard.topMax,
@@ -272,9 +280,10 @@ export class JovoPlayFab {
     }
 
     if (this.config.leaderboard.neighborMax > 0) {
-      const getLeaderboardAroundPlayer = promisify(PlayFabClient.GetLeaderboardAroundPlayer);
+      const getLeaderboardAroundPlayer = promisify(PlayFabServer.GetLeaderboardAroundUser);
       promises.push(
         getLeaderboardAroundPlayer({
+          PlayFabId: this.PlayFabId,
           MaxResultsCount: this.config.leaderboard.neighborMax,
           ProfileConstraints: this.config.leaderboard.profileConstraints,
           StatisticName: statName,
@@ -319,7 +328,7 @@ export class JovoPlayFab {
 
       return combinedLeaderboard;
     } catch (error) {
-      console.error('PlayFabClient Leaderboards', error);
+      console.error('PlayFabServer Leaderboards', error);
     }
 
     return null;
@@ -332,18 +341,19 @@ export class JovoPlayFab {
     console.debug('JovoPlayFab.updateUserData');
 
     const updateUserDataRequest = {
+      PlayFabId: this.PlayFabId,
       Data: this.stringifyValues(data),
       Permission: permission,
     };
-    const updateUserData = promisify(PlayFabClient.UpdateUserData);
+    const updateUserData = promisify(PlayFabServer.UpdateUserData);
 
     try {
       const result = await updateUserData(updateUserDataRequest);
-      console.debug('PlayFabClient.UpdateUserData', JSON.stringify(result, null, 2));
+      console.debug('PlayFabServer.UpdateUserData', JSON.stringify(result, null, 2));
 
       return true;
     } catch (error) {
-      console.error('PlayFabClient.UpdateUserData', error);
+      console.error('PlayFabServer.UpdateUserData', error);
     }
 
     return false;
@@ -354,22 +364,26 @@ export class JovoPlayFab {
 
     let value: any | undefined;
 
+    if (!playFabId) {
+      playFabId  = this.PlayFabId
+    }
+
     const getUserDataRequest = {
       PlayFabId: playFabId,
       Keys: Array.isArray(keys) ? keys : [keys],
     };
 
-    const getUserData = promisify(PlayFabClient.GetUserData);
+    const getUserData = promisify(PlayFabServer.GetUserData);
 
     try {
       const result = await getUserData(getUserDataRequest);
-      console.debug('PlayFabClient.GetUserData', JSON.stringify(result, null, 2));
+      console.debug('PlayFabServer.GetUserData', JSON.stringify(result, null, 2));
 
       if (result.status === ApiStatus.OK) {
         value = this.parseUserDataRecords(result.data.Data);
       }
     } catch (error) {
-      console.error('PlayFabClient.GetUserData', error);
+      console.error('PlayFabServer.GetUserData', error);
     }
 
     return value;

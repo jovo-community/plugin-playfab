@@ -8,6 +8,11 @@ This plugin for the [Jovo Framework](https://github.com/jovotech/jovo-framework)
 
 This PlayFab plugin uses the classic APIs and not the newer Entity Programming Model.
 
+Links:
+- [Create a PlayFab account](https://docs.microsoft.com/en-us/gaming/playfab/gamemanager/pfab-account)
+- [API feature settings in the PlayFab Game Manager](https://docs.microsoft.com/en-us/gaming/playfab/gamemanager/api-feature-settings-in-the-playfab-game-manager)
+
+
 ## Supports
 
 - Jovo Framework 4.x
@@ -56,7 +61,6 @@ The plugin has the following values:
 
 ```typescript
 new PlayFabPlugin({
-  titleId: '',
   developerSecretKey: '',
   login: {
     autoLogin: true,
@@ -107,7 +111,7 @@ Here is a typical configuration:
 
 ```typescript
 {
-  titleId: 'A999',
+  developerSecretKey: 'XYZ...',
   login : {
     extendedProfileKey: 'extendedProfile',
     maxNewProfileRetries: 2,
@@ -136,10 +140,9 @@ Here is a typical configuration:
 }
 ```
 
-- `titleId`: The PlayFab game title id.
+- `developerSecretKey`: Required. Developer secret key needed to make PlayFab Server and Admin API calls. For more information, see [Secret key management](https://docs.microsoft.com/en-us/gaming/playfab/gamemanager/secret-key-management) in the PlayFab documentation.
 - `login`: Configuration values for login. See [login](#login) for more information.
 - `leaderboard`: Configuration values for the leaderboard. See [leaderboard](#leaderboard) for more information.
-- `developerSecretKey`: Developer key needed to use the PlayFabServer API. See [Server API](#server-api) for more information.
 
 ### login
 
@@ -148,7 +151,7 @@ Settings used when `this.$playfab.login()` is called. Login is called once per s
 The login configuration includes:
 
 - `autoLogin`: Automatically calls `$playfab.login()` each new session. Default value is `true`.
-- `infoRequestParameters`: The PlayFab player combined info request parameters. For more information, see [GetPlayerCombinedInfoRequestParams](https://docs.microsoft.com/en-us/rest/api/playfab/client/authentication/login-with-custom-id?view=playfab-rest#getplayercombinedinforequestparams) in the PlayFab documentation.
+- `infoRequestParameters`: The PlayFab player combined info request parameters. For more information, see [GetPlayerCombinedInfoRequestParams](https://docs.microsoft.com/en-us/rest/api/playfab/server/player-data-management/get-player-combined-info?view=playfab-rest#getplayercombinedinforequestparams) in the PlayFab documentation.
 - `onNewProfile`: A callback that is called after a new player is created in PlayFab to provide a profile. For more information, see [$playfab.login](#playfablogin).
 - `extendedProfileKey`: If provided, the key in player user data to use for extended profile information. Default value is '' meaning there is no extended profile info. For more information, see [$playfab.updateProfile](#playfabupdateprofile).
 - `maxNewProfileRetries`: The number of times to call PlayFab with a new player's profile values (before continuing) when the call fails. A number between 0-10. Default value is 2. Use with caution. For more information, see [$playfab.updateProfile](#playfabupdateprofile).
@@ -162,7 +165,7 @@ The leaderboard configuration includes:
 
 - `topMax`: The number of players to return from the top of the leaderboard. Number between 0-100. Default value is 5. 
 - `neighborMax`: The number of players (including the current player) to return immediately surrounding the current player. Number between 0-100. Default value is 2.
-- `profileConstraints`: The profile values to return for each player in the leaderboard. For more information, see [PlayerProfileViewConstraints](https://docs.microsoft.com/en-us/rest/api/playfab/client/player-data-management/get-leaderboard?view=playfab-rest#playerprofileviewconstraints) in the PlayFab documentation.
+- `profileConstraints`: The profile values to return for each player in the leaderboard. For more information, see [PlayerProfileViewConstraints](https://docs.microsoft.com/en-us/rest/api/playfab/server/player-data-management/get-leaderboard?view=playfab-rest#playerprofileviewconstraints) in the PlayFab documentation.
 - `userDataKeys`: An array of strings with each public player user data key that you want to return for each player in the leaderboard. This can be used to return extended profile information to use on the leaderboard. 
 
 Voice-only applications should keep this values for `topMax` and `neighborMax` to 5 or less. This value can be heigher when displaying the leaderboard. The total number of players in the returned leaderboard is the sum of `topMax` and `neighborMax` after duplicate entries are removed.
@@ -186,7 +189,7 @@ The following functions are available:
 - `updateUserData()`: Updates the player's user data. See [$playfab.updateUserData](#playfabupdateuserdata)
 - `getUserData()`: Get the current player's or another player's public user data. See [$playfab.getUserData](#playfabgetuserdata)
 
-Behind the scenes, these functions call the PlayFab Client REST API.
+Behind the scenes, these functions call the PlayFab Server or Admin REST APIs.
 
 The profile is in the format:
 
@@ -198,7 +201,7 @@ Once (on the first request of a new session), `$playfab.login()` is automaticall
 await this.$playfab.login();
 ```
 
-First, `PlayFabClient.LoginWithCustomID` is called using Jovo `$user.id` as the CustomId. If this is the first login for the CustomId then a new player is created in PlayFab. Otherwise, the existing player is logged in. On success, the Jovo session values of `playfab.loginInfo` and `playfab.sessionTicket` are set. 
+First, `PlayFabServer.LoginWithServerCustomId` is called using Jovo `$user.id` as the ServerCustomId. If this is the first login for the ServerCustomId then a new player is created in PlayFab. Otherwise, the existing player is logged in. On success, the Jovo `playfab.loginInfo` session values is set. 
 
 #### New User
 
@@ -298,7 +301,6 @@ Sample session data for a new player:
         "locale": "en"
       }
     },
-    "sessionTicket": "6DDA124D5...-AAA...",
     "loginStatus": "newUser",
     "isDisplayNameUpdated": true,
     "loginInfo": {
@@ -349,7 +351,6 @@ Sample session data for an existing player:
         "locale": "en"
       }
     },
-    "sessionTicket": "6DDA124D5...-AAA...",
     "loginStatus": "existingUser",
     "loginInfo": {
       "SessionTicket": "6DDA124D5...-AAA...",
@@ -400,7 +401,7 @@ Sample session data for an existing player:
 }
 ```
 
-The value of `playfab.loginInfo` is a snapshot of the values at login time. They are most useful when processing the first request in a session. The Jovo session data `playfab.loginInfo.PlayFabId` value is useful in many PlayFab API calls.
+The value of `playfab.loginInfo` is a snapshot of the values at login time. They are most useful when processing the first request in a session. The Jovo session data `playfab.loginInfo.PlayFabId` value is useful in many PlayFab API calls so it has been added to `this.$playfab.PlayFabId`.
 
 Use the profile info in code: `this.$session.data.playfab.profile`.
 
@@ -419,7 +420,7 @@ The profile has these values:
 interface ProfileInfo {
   displayName?: string;
   avatarUrl?: string;
-  extendedProfile?: AnyObject;
+  extendedProfile?: unknown;
 }
 ```
 
@@ -522,7 +523,7 @@ Here is a sample result:
 Call `updateUserData()` to set user data for the current player. Pass the `data` and an optional `permission` (default: `Public`). Returns `true` if the data was updates. Otherwise, `false`.
 
 ```typescript
-const result = await this.$playfab.updateUserData({ mykey: 'my value' });
+const result = await this.$playfab.updateUserData({ key1: 'value1' });
 ```
 
 The `data` is a single object with string keys and `any` values. Since PlayFab stores all user data values as strings, each property value is passed to `JSON.stringify()` before the API is called. Doing this makes the call easier to use and allows for objects and arrays as property values. 
@@ -537,33 +538,16 @@ Call `getUserData()` to get public user data for the current player or another p
 Pass a string or string[] to `keys` for the user data values you want returned. When `playFabId` is not passed, values for the current user are returned. You will not normally need to set `playFabId`, but `getLeaderboard()` uses it when returning extended profile user data.
 
 ```typescript
-const result = await this.$playfab.getUserData({ keys: 'extendedProfile' });
+const result = await this.$playfab.getUserData({ keys: 'key1' });
 ```
 
 Since PlayFab stores all user data values as strings, this function attempts to convert each property value back to a string, number, boolean, object or array. 
 
 NOTE: There are limits for user data values. Refer to Title Settings > Limits in Game Manager (the PlayFab developer portal).
 
-### Client API
-
-The functions on `this.$playfab` wrap one or more calls to the Client API and groups them together in a simplified, useful way.
-
-To access all the functionality of the Client API, call `this.$playfab.PlayFabClient` followed by the request you want to make. For more information, see [PlayFab Client REST API](https://docs.microsoft.com/en-us/rest/api/playfab/client/?view=playfab-rest) in the documentation.
-
-To turn the callback function into a promise, use `promisify`.
-
-Here is an example:
-
-```typescript
-import { promisify } from 'util';
-
-const updatePlayerStatistics = promisify(this.$playfab.PlayFabClient.UpdatePlayerStatistics)
-const result = await updatePlayerStatistics({/*...*/});
-```
-
-To use the Client API, you must set the value of `titleId` in the plugin config. When `titleId` has a value, `PlayFab.settings.titleId` is set when the plugin loads.
-
 ### Server API
+
+Most of the functions on `this.$playfab` wrap one or more calls to the Server API and groups them together in a simplified, useful way.
 
 To access all the functionality of the Server API, call `this.$playfab.PlayFabServer` followed by the request you want to make. For more information, see [PlayFab Server REST API](https://docs.microsoft.com/en-us/rest/api/playfab/server/?view=playfab-rest) in the documentation.
 
@@ -578,7 +562,27 @@ const getUserData = promisify(this.$playfab.PlayFabServer.GetUserData)
 const result = await getUserData({/*...*/});
 ```
 
-To use the Server API, you must set the value of `developerSecretKey` in the plugin config. When `developerSecretKey` has a value, `PlayFab.settings.developerSecretKey` is set when the plugin loads.
+To use the Server API, you must set the value of `developerSecretKey` in the plugin config. This sets `PlayFab.settings.developerSecretKey` when the plugin loads.
+
+
+### Admin API
+
+Calling `this.$playfab.updateProfile()` and updating the display name uses the Admin API.
+
+To access all the functionality of the Admin API, call `this.$playfab.PlayFabAdmin` followed by the request you want to make. For more information, see [PlayFab Admin REST API](https://docs.microsoft.com/en-us/rest/api/playfab/admin/?view=playfab-rest) in the documentation.
+
+To turn the callback function into a promise, use `promisify`.
+
+Here is an example:
+
+```typescript
+import { promisify } from 'util';
+
+const updateUserTitleDisplayName = promisify(this.$playfab.PlayFabAdmin.UpdateUserTitleDisplayName)
+const result = await updateUserTitleDisplayName({/*...*/});
+```
+
+To use the Admin API, you must set the value of `developerSecretKey` in the plugin config. This sets `PlayFab.settings.developerSecretKey` when the plugin loads.
 
 
 ## Jovo Debugger
